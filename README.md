@@ -1,12 +1,57 @@
-## How it works
+# xk6-output-loadmark
 
-The extension receives metric samples from k6 and forwards them as JSON to a configured HTTP or WebSocket endpoint.
+A [k6](https://k6.io/) output extension that forwards k6 metric samples to an HTTP or WebSocket endpoint.
 
-The destination is configured using environment variables, so the same k6 test can send results to different systems without changing the test script.
+LoadMark can use this extension to receive k6 metrics during a test, but the extension is generic and can send metrics to any compatible HTTP or WebSocket endpoint.
+
+## Features
+
+- HTTP and HTTPS output
+- WebSocket and secure WebSocket output
+- JSON output
+- Configured through environment variables
+- Works with standard k6 output configuration
+- No custom metric schema or aggregation
+
+## Installation
+
+### Download a release
+
+Pre-built k6 binaries with the LoadMark output extension are available from the project's GitHub releases.
+
+Download the binary for your operating system and architecture, then run:
+
+```bash
+./k6 run test.js --out loadmark
+```
+
+### Build with xk6
+
+You can also build a custom k6 binary using [xk6](https://github.com/grafana/xk6):
+
+```bash
+xk6 build --with github.com/prionkor/xk6-output-loadmark@v0.1.0
+```
+
+Or build directly from a local checkout:
+
+```bash
+xk6 build --with github.com/prionkor/xk6-output-loadmark=.
+```
+
+## Usage
+
+The extension is enabled with the standard k6 output option:
+
+```bash
+./k6 run test.js --out loadmark
+```
+
+The destination is configured using environment variables.
 
 ## Configuration
 
-The extension uses the following environment variables:
+The extension requires the following environment variables:
 
 ```bash
 XK6_OUTPUT_LOADMARK_PROTOCOL=http
@@ -19,35 +64,37 @@ Selects the output protocol.
 
 Supported values:
 
-* `http`
-* `ws`
+- `http`
+- `ws`
 
 ### `XK6_OUTPUT_LOADMARK_URL`
 
 Specifies the destination endpoint.
 
-Examples:
+HTTP:
 
 ```bash
-# HTTP
 XK6_OUTPUT_LOADMARK_PROTOCOL=http
 XK6_OUTPUT_LOADMARK_URL=http://localhost:3000/metrics
 ```
 
+HTTPS:
+
 ```bash
-# HTTPS
 XK6_OUTPUT_LOADMARK_PROTOCOL=http
 XK6_OUTPUT_LOADMARK_URL=https://example.com/metrics
 ```
 
+WebSocket:
+
 ```bash
-# WebSocket
 XK6_OUTPUT_LOADMARK_PROTOCOL=ws
 XK6_OUTPUT_LOADMARK_URL=ws://localhost:3000/metrics
 ```
 
+Secure WebSocket:
+
 ```bash
-# Secure WebSocket
 XK6_OUTPUT_LOADMARK_PROTOCOL=ws
 XK6_OUTPUT_LOADMARK_URL=wss://example.com/metrics
 ```
@@ -86,6 +133,8 @@ XK6_OUTPUT_LOADMARK_URL=wss://example.com/k6 \
 ./k6 run test.js --out loadmark
 ```
 
+The WebSocket connection remains open while the k6 test is running and is closed when the test finishes.
+
 ## Data format
 
 The extension currently serializes the `metrics.SampleContainer` values received from k6 directly to JSON.
@@ -96,25 +145,31 @@ This allows the receiving application to decide how the data should be processed
 
 ## Error handling
 
-The extension treats the configured output as part of the k6 test.
+The extension reports configuration and output errors instead of silently ignoring them.
 
-Configuration errors, connection failures, and output failures are reported rather than silently ignored.
-
-For example, running the extension without a protocol results in:
+Missing configuration results in an error:
 
 ```text
 XK6_OUTPUT_LOADMARK_PROTOCOL is required
 ```
 
-An unsupported protocol results in:
+An unsupported protocol results in an error:
 
 ```text
 unsupported protocol: ftp
 ```
 
+Connection and transport errors are also reported.
+
 ## Development
 
-Build the extension locally:
+Clone the repository and install the required dependencies:
+
+```bash
+go mod download
+```
+
+Build a local k6 binary with the extension:
 
 ```bash
 xk6 build --with github.com/prionkor/xk6-output-loadmark=.
