@@ -38,3 +38,4 @@ reports/**
 **/*.log
 
 k6
+test.js
