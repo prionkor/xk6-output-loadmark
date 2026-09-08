@@ -1,4 +1,4 @@
-module github.com/prionkor/xk9-output-loadmark
+module github.com/prionkor/xk6-output-loadmark
 
 go 1.27.0
 
