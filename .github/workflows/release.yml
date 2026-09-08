@@ -60,7 +60,7 @@ jobs:
         run: |
           xk6 build v2.2.0 \
             --output k6 \
-            --with github.com/prionkor/xk6-output-loadmark=${{ github.ref_name }}
+            --with github.com/prionkor/xk6-output-loadmark@${{ github.ref_name }}
 
       - name: Package
         env:
