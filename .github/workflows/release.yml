@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            archive: tar.gz
+
+          - goos: linux
+            goarch: arm64
+            archive: tar.gz
+
+          - goos: darwin
+            goarch: amd64
+            archive: tar.gz
+
+          - goos: darwin
+            goarch: arm64
+            archive: tar.gz
+
+          - goos: windows
+            goarch: amd64
+            archive: zip
+
+          - goos: windows
+            goarch: arm64
+            archive: zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install xk6
+        run: go install go.k6.io/xk6/cmd/xk6@latest
+
+      - name: Build k6
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          xk6 build v2.2.0 \
+            --output k6 \
+            --with github.com/prionkor/xk6-output-loadmark=${{ github.ref_name }}
+
+      - name: Package
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          mkdir -p dist
+
+          if [ "${GOOS}" = "windows" ]; then
+            mv k6 k6.exe
+            zip "dist/k6-loadmark-${{ github.ref_name }}-${GOOS}-${GOARCH}.zip" k6.exe
+          else
+            tar -czf "dist/k6-loadmark-${{ github.ref_name }}-${GOOS}-${GOARCH}.tar.gz" k6
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-loadmark-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
+
+  publish:
+    name: Publish release
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: dist
+          pattern: k6-loadmark-*
+          merge-multiple: true
+
+      - name: Generate checksums
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/*
